@@ -4,7 +4,7 @@
 @script ExecuteInEditMode
 @script RequireComponent (Camera)
 @script AddComponentMenu ("Image Effects/Bloom and Glow/Bloom")
-				
+
 class Bloom extends PostEffectsBase {
 	enum LensFlareStyle {
 		Ghosting = 0,
@@ -31,22 +31,22 @@ class Bloom extends PostEffectsBase {
 	enum BloomQuality {
 		Cheap = 0,
 		High = 1,
-	}	
+	}
 
 	public var tweakMode : TweakMode = 0;
 	public var screenBlendMode : BloomScreenBlendMode = BloomScreenBlendMode.Add;
-	
+
 	public var hdr : HDRBloomMode = HDRBloomMode.Auto;
 	private var doHdr : boolean = false;
 	public var sepBlurSpread : float = 2.5f;
 
 	public var quality : BloomQuality = BloomQuality.High;
-	
+
 	public var bloomIntensity : float = 0.5f;
 	public var bloomThreshhold : float = 0.5f;
 	public var bloomThreshholdColor : Color = Color.white;
-	public var bloomBlurIterations : int = 2;	
-		
+	public var bloomBlurIterations : int = 2;
+
 	public var hollywoodFlareBlurIterations : int = 2;
 	public var flareRotation : float = 0.0f;
 	public var lensflareMode : LensFlareStyle = 1;
@@ -58,24 +58,24 @@ class Bloom extends PostEffectsBase {
 	public var flareColorB : Color = Color (0.4f, 0.8f, 0.8f, 0.75f);
 	public var flareColorC : Color = Color (0.8f, 0.4f, 0.8f, 0.75f);
 	public var flareColorD : Color = Color (0.8f, 0.4f, 0.0f, 0.75f);
-	public var blurWidth : float = 1.0f;	
+	public var blurWidth : float = 1.0f;
 	public var lensFlareVignetteMask : Texture2D;
-				
-	public var lensFlareShader : Shader; 
+
+	public var lensFlareShader : Shader;
 	private var lensFlareMaterial : Material;
 
 	public var screenBlendShader : Shader;
 	private var screenBlend : Material;
-	
+
 	public var blurAndFlaresShader: Shader;
 	private var blurAndFlaresMaterial : Material;
-	
+
 	public var brightPassFilterShader : Shader;
 	private var brightPassFilterMaterial : Material;
-	
+
 	function CheckResources () : boolean {
 		CheckSupport (false);
-		
+
 		screenBlend = CheckShaderAndCreateMaterial (screenBlendShader, screenBlend);
 		lensFlareMaterial = CheckShaderAndCreateMaterial(lensFlareShader,lensFlareMaterial);
 		blurAndFlaresMaterial = CheckShaderAndCreateMaterial (blurAndFlaresShader, blurAndFlaresMaterial);
@@ -86,23 +86,23 @@ class Bloom extends PostEffectsBase {
 		return isSupported;
 	}
 
-	function OnRenderImage (source : RenderTexture, destination : RenderTexture) {			
+	function OnRenderImage (source : RenderTexture, destination : RenderTexture) {
 		if(CheckResources()==false) {
 			Graphics.Blit (source, destination);
 			return;
-		}		
-				
+		}
+
 		// screen blend is not supported when HDR is enabled (will cap values)
-		
+
 		doHdr = false;
 		if(hdr == HDRBloomMode.Auto)
-			doHdr = source.format == RenderTextureFormat.ARGBHalf && camera.hdr;
+			doHdr = source.format == RenderTextureFormat.ARGBHalf && GetComponent(Camera).hdr;
 		else {
 			doHdr = hdr == HDRBloomMode.On;
 		}
-		
+
 		doHdr = doHdr && supportHDRTextures;
-		
+
 		var realBlendMode : BloomScreenBlendMode = screenBlendMode;
 		if(doHdr)
 			realBlendMode = BloomScreenBlendMode.Add;
@@ -115,7 +115,7 @@ class Bloom extends PostEffectsBase {
 
 		var widthOverHeight : float = (1.0f * source.width) / (1.0f * source.height);
 		var oneOverBaseSize : float = 1.0f / 512.0f;
-		
+
 		// downsample
 		var quarterRezColor : RenderTexture = RenderTexture.GetTemporary (rtW4, rtH4, 0, rtFormat);
 		var halfRezColorDown : RenderTexture = RenderTexture.GetTemporary (rtW2, rtH2, 0, rtFormat);
@@ -132,15 +132,15 @@ class Bloom extends PostEffectsBase {
 		}
 		RenderTexture.ReleaseTemporary (halfRezColorDown);
 
-		// cut colors (threshholding)			
-		var secondQuarterRezColor : RenderTexture = RenderTexture.GetTemporary (rtW4, rtH4, 0, rtFormat);		
-		BrightFilter (bloomThreshhold * bloomThreshholdColor, quarterRezColor, secondQuarterRezColor);		
-				
+		// cut colors (threshholding)
+		var secondQuarterRezColor : RenderTexture = RenderTexture.GetTemporary (rtW4, rtH4, 0, rtFormat);
+		BrightFilter (bloomThreshhold * bloomThreshholdColor, quarterRezColor, secondQuarterRezColor);
+
 		// blurring
-		
+
 		if (bloomBlurIterations < 1) bloomBlurIterations = 1;
 		else if (bloomBlurIterations > 10) bloomBlurIterations = 10;
-				        
+
 		for (var iter : int = 0; iter < bloomBlurIterations; iter++ ) {
 			var spreadForPass : float = (1.0f + (iter * 0.25f)) * sepBlurSpread;
 
@@ -153,7 +153,7 @@ class Bloom extends PostEffectsBase {
 
 			// horizontal blur
 			blur4 = RenderTexture.GetTemporary (rtW4, rtH4, 0, rtFormat);
-			blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 ((spreadForPass / widthOverHeight) * oneOverBaseSize, 0.0f, 0.0f, 0.0f));	
+			blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 ((spreadForPass / widthOverHeight) * oneOverBaseSize, 0.0f, 0.0f, 0.0f));
 			Graphics.Blit (secondQuarterRezColor, blur4, blurAndFlaresMaterial, 4);
 			RenderTexture.ReleaseTemporary (secondQuarterRezColor);
 			secondQuarterRezColor = blur4;
@@ -177,20 +177,20 @@ class Bloom extends PostEffectsBase {
 		{
 			Graphics.SetRenderTarget(secondQuarterRezColor);
 			GL.Clear(false, true, Color.black); // Clear to avoid RT restore
-			Graphics.Blit (quarterRezColor, secondQuarterRezColor, screenBlend, 6); 
+			Graphics.Blit (quarterRezColor, secondQuarterRezColor, screenBlend, 6);
 		}
 
-		// lens flares: ghosting, anamorphic or both (ghosted anamorphic flares) 
-		
+		// lens flares: ghosting, anamorphic or both (ghosted anamorphic flares)
+
 		if (lensflareIntensity > Mathf.Epsilon) {
-			 
+
 			var rtFlares4 : RenderTexture = RenderTexture.GetTemporary (rtW4, rtH4, 0, rtFormat);
 
 			if (lensflareMode == 0) {
 				// ghosting only
-							
+
 				BrightFilter (lensflareThreshhold, secondQuarterRezColor, rtFlares4);
-					
+
 				if(quality > BloomQuality.Cheap) {
 					// smooth a little
 					blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 (0.0f, (1.5f) / (1.0f * quarterRezColor.height), 0.0f, 0.0f));
@@ -207,17 +207,17 @@ class Bloom extends PostEffectsBase {
 				// no ugly edges!
 				Vignette (0.975f, rtFlares4, rtFlares4);
 				BlendFlares (rtFlares4, secondQuarterRezColor);
-			} 
+			}
 			else {
-				
-				//Vignette (0.975f, rtFlares4, rtFlares4);	
+
+				//Vignette (0.975f, rtFlares4, rtFlares4);
 				//DrawBorder(rtFlares4, screenBlend, 8);
 
 				var flareXRot : float = 1.0f * Mathf.Cos(flareRotation);
 				var flareyRot : float = 1.0f * Mathf.Sin(flareRotation);
-				
+
 				var stretchWidth : float = (hollyStretchWidth * 1.0f / widthOverHeight) * oneOverBaseSize;
-				var stretchWidthY : float = hollyStretchWidth * oneOverBaseSize;				
+				var stretchWidthY : float = hollyStretchWidth * oneOverBaseSize;
 
 				blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 (flareXRot, flareyRot, 0.0, 0.0));
 				blurAndFlaresMaterial.SetVector ("_Threshhold", Vector4 (lensflareThreshhold, 1.0f, 0.0f, 0.0f));
@@ -235,15 +235,15 @@ class Bloom extends PostEffectsBase {
 				// stretch 1st
 				blurAndFlaresMaterial.SetFloat ("_StretchWidth", hollyStretchWidth);
 				quarterRezColor.DiscardContents();
-				Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 1);	
+				Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 1);
 				// stretch 2nd
 				blurAndFlaresMaterial.SetFloat ("_StretchWidth", hollyStretchWidth * 2.0f);
 				rtFlares4.DiscardContents();
-				Graphics.Blit (quarterRezColor, rtFlares4, blurAndFlaresMaterial, 1);	
+				Graphics.Blit (quarterRezColor, rtFlares4, blurAndFlaresMaterial, 1);
 				// stretch 3rd
 				blurAndFlaresMaterial.SetFloat ("_StretchWidth", hollyStretchWidth * 4.0f);
 				quarterRezColor.DiscardContents();
-				Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 1);	
+				Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 1);
 
 				// additional blur passes
 				for (iter = 0; iter < hollywoodFlareBlurIterations; iter++ ) {
@@ -253,28 +253,28 @@ class Bloom extends PostEffectsBase {
 					rtFlares4.DiscardContents();
 					Graphics.Blit (quarterRezColor, rtFlares4, blurAndFlaresMaterial, 4);
 
-					blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 (stretchWidth * flareXRot, stretchWidth * flareyRot, 0.0, 0.0));	
+					blurAndFlaresMaterial.SetVector ("_Offsets", Vector4 (stretchWidth * flareXRot, stretchWidth * flareyRot, 0.0, 0.0));
 					quarterRezColor.DiscardContents();
-					Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 4); 						
-				}	
+					Graphics.Blit (rtFlares4, quarterRezColor, blurAndFlaresMaterial, 4);
+				}
 
 				if (lensflareMode == 1)
-					// anamorphic lens flares															
+					// anamorphic lens flares
 					AddTo (1.0, quarterRezColor, secondQuarterRezColor);
 				else {
 
-					// "combined" lens flares													
-				
+					// "combined" lens flares
+
 					Vignette (1.0, quarterRezColor, rtFlares4);
 					BlendFlares (rtFlares4, quarterRezColor);
 					AddTo (1.0, quarterRezColor, secondQuarterRezColor);
-				}																						
+				}
 			}
 			RenderTexture.ReleaseTemporary (rtFlares4);
-		}		
+		}
 
 		var blendPass : int = realBlendMode;
-		//if(Mathf.Abs(chromaticBloom) < Mathf.Epsilon) 
+		//if(Mathf.Abs(chromaticBloom) < Mathf.Epsilon)
 		//	blendPass += 4;
 
 		screenBlend.SetFloat ("_Intensity", bloomIntensity);
@@ -289,41 +289,41 @@ class Bloom extends PostEffectsBase {
 		else
 			Graphics.Blit (secondQuarterRezColor, destination, screenBlend, blendPass);
 
-		RenderTexture.ReleaseTemporary (quarterRezColor);	
-		RenderTexture.ReleaseTemporary (secondQuarterRezColor);	
+		RenderTexture.ReleaseTemporary (quarterRezColor);
+		RenderTexture.ReleaseTemporary (secondQuarterRezColor);
 	}
-	
+
 	private function AddTo (intensity_ : float, from : RenderTexture, to : RenderTexture) {
 		screenBlend.SetFloat ("_Intensity", intensity_);
 		to.MarkRestoreExpected(); // additive blending, RT restore expected
-		Graphics.Blit (from, to, screenBlend, 9); 		
+		Graphics.Blit (from, to, screenBlend, 9);
 	}
-	
+
 	private function BlendFlares (from : RenderTexture, to : RenderTexture) {
 		lensFlareMaterial.SetVector ("colorA", Vector4 (flareColorA.r, flareColorA.g, flareColorA.b, flareColorA.a) * lensflareIntensity);
 		lensFlareMaterial.SetVector ("colorB", Vector4 (flareColorB.r, flareColorB.g, flareColorB.b, flareColorB.a) * lensflareIntensity);
 		lensFlareMaterial.SetVector ("colorC", Vector4 (flareColorC.r, flareColorC.g, flareColorC.b, flareColorC.a) * lensflareIntensity);
 		lensFlareMaterial.SetVector ("colorD", Vector4 (flareColorD.r, flareColorD.g, flareColorD.b, flareColorD.a) * lensflareIntensity);
 		to.MarkRestoreExpected(); // additive blending, RT restore expected
-		Graphics.Blit (from, to, lensFlareMaterial);			
+		Graphics.Blit (from, to, lensFlareMaterial);
 	}
 
 	private function BrightFilter (thresh : float, from : RenderTexture, to : RenderTexture) {
 		brightPassFilterMaterial.SetVector ("_Threshhold", Vector4 (thresh, thresh, thresh, thresh));
-		Graphics.Blit (from, to, brightPassFilterMaterial, 0);			
+		Graphics.Blit (from, to, brightPassFilterMaterial, 0);
 	}
 
 	private function BrightFilter (threshColor : Color, from : RenderTexture, to : RenderTexture) {
 		brightPassFilterMaterial.SetVector ("_Threshhold", threshColor);
-		Graphics.Blit (from, to, brightPassFilterMaterial, 1);			
-	}	
-	
+		Graphics.Blit (from, to, brightPassFilterMaterial, 1);
+	}
+
 	private function Vignette (amount : float, from : RenderTexture, to : RenderTexture) {
 		if(lensFlareVignetteMask) {
 			screenBlend.SetTexture ("_ColorBuffer", lensFlareVignetteMask);
 			to.MarkRestoreExpected(); // using blending, RT restore expected
-			Graphics.Blit (from == to ? null : from, to, screenBlend, from == to ? 7 : 3); 				
-		} 
+			Graphics.Blit (from == to ? null : from, to, screenBlend, from == to ? 7 : 3);
+		}
 		else if (from != to)
 		{
 			Graphics.SetRenderTarget (to);
